@@ -1,0 +1,146 @@
+# This is meant to be included in other main playbooks
+---
+  - name: Get list of all nodes which are vxsnd
+    set_fact:
+       vxsnd_peer_list: |
+         [{% for h in groups['spine'] %}
+            {% if hostvars[h]['ansible_lo']['ipv4_secondaries'][0] is defined %}
+               {% if h != inventory_hostname %}
+                 "{{ hostvars[h]['ansible_lo']['ipv4_secondaries'][0]['address'] }} "
+               {%endif%}
+            {%endif%}
+          {%endfor%}]
+    when: "{{ 'spine' in group_names }}"
+
+  - name: Configure the spines with the anycast VXSND
+    blockinfile:
+      dest: /etc/network/interfaces
+      create: yes
+      marker: "#{mark} lo ANSIBLE MANAGED BLOCK"
+      block: |
+
+        auto lo
+        iface lo inet loopback
+           address {{ my_ip }}/32
+           address {{ vxsnd_anycast_ip.split()[0] }}/32
+    when: "{{ 'spine' in group_names }}"
+    tags:
+      - ifconfig
+      - vxsnd
+
+  - name: Reload the interfaces file
+    command: sudo ifreload -a
+    when: "{{ 'spine' in group_names }}"
+
+  - name: Delete the existing vxsnd.conf file
+    file: path=/etc/vxsnd.conf state=absent
+    when: "{{ 'spine' in group_names }}"
+
+  - name: Configure vxsnd.conf
+    blockinfile:
+      dest: /etc/vxsnd.conf
+      create: yes
+      block: |
+        [common]
+        svcnode_ip = {{ vxsnd_anycast_ip.split()[0] }}
+        src_ip     = {{ my_ip }}
+        
+        [vxsnd]
+        svcnode_peers = {{ vxsnd_peer_list|join('') }}
+    when: "{{ 'spine' in group_names }}"
+    tags:
+      - vxsnd
+
+  - name: Write /etc/default/vxsnd
+    replace: dest=/etc/default/vxsnd regexp='START=no' replace='START=yes'
+    when: "{{ 'spine' in group_names }}"
+    tags:
+      - vxsnd
+
+  - name: Restart vxsnd
+    service: name=vxsnd state=restarted
+    when: "{{ 'spine' in group_names }}"
+    tags:
+      - vxsnd
+
+  - name: Identify VTEP Anycast IP
+    set_fact:
+      vtep_ip_anycast: |
+        {% if (my_node_id|int %2) == 1 %}
+          {{ server_ip_base + '252.1.' + my_node_id|string }}
+        {%else%}
+          {{ server_ip_base + '252.1.' + (my_node_id|int -1)|string }}
+        {%endif%}
+    when: "{{ 'leaf' in group_names and dual_attach_hosts }}"
+
+  - name: Configure the leaves with VXSND config
+    blockinfile:
+      dest: /etc/network/interfaces
+      create: yes
+      marker: "#{mark} lo ANSIBLE MANAGED BLOCK"
+      block: |
+
+        auto lo
+        iface lo inet loopback
+           address {{ my_ip }}/32
+           vxrd-svcnode-ip {{ vxsnd_anycast_ip.split()[0] }}
+           vxrd-src-ip {{ my_ip }}
+
+    when: "{{ 'leaf' in group_names and not dual_attach_hosts }}"
+    tags:
+      - ifconfig
+      - vxrd
+
+  - name: Configure the leaves with VXSND config
+    blockinfile:
+      dest: /etc/network/interfaces
+      marker: "#{mark} lo ANSIBLE MANAGED BLOCK"
+      create: yes
+      block: |
+
+        auto lo
+        iface lo inet loopback
+           address {{ my_ip }}/32
+           vxrd-svcnode-ip {{ vxsnd_anycast_ip.split()[0] }}
+           vxrd-src-ip {{ my_ip }}
+           clagd-vxlan-anycast-ip {{ vtep_ip_anycast }}
+
+    when: "{{ 'leaf' in group_names and dual_attach_hosts }}"
+    tags:
+      - ifconfig
+      - vxrd
+
+  - name: Reload the interfaces file
+    command: sudo ifreload -a
+    when: "{{ 'leaf' in group_names }}"
+
+  - name: Delete the existing vxrd.conf file
+    file: path=/etc/vxrd.conf state=absent
+    when: "{{ 'leaf' in group_names }}"
+
+  - name: Create a new vxrd.conf file
+    blockinfile:
+      dest: /etc/vxrd.conf
+      create: yes
+      block: |
+        [common]
+        node_id = {{ my_node_id }}
+        svcnode_ip = {{ vxsnd_anycast_ip.split()[0] }}
+        src_ip = {{ my_ip }}
+
+        [vxrd]
+        head_rep = true
+    when: "{{ 'leaf' in group_names }}"
+
+  - name: Write /etc/default/vxrd
+    replace: dest=/etc/default/vxrd regexp='START=no' replace='START=yes'
+    when: "{{ 'leaf' in group_names }}"
+    tags:
+      - vxrd
+
+  - name: Restart vxrd
+    service: name=vxrd state=restarted
+    when: "{{ 'leaf' in group_names }}"
+    tags:
+      - vxrd
+
