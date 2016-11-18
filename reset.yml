@@ -45,5 +45,7 @@
 - hosts: 'server*'
   tasks:
     - name: Reload interfaces
-      command: sudo reboot
+      command: /usr/bin/systemd-run --on-active=10 /bin/systemctl reboot
+      async: 0
+      poll: 0
 
