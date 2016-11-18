@@ -11,7 +11,6 @@ Typing 'netq <TAB>' will show you options to try out. Some useful examples to ge
 
     netq check bgp
     netq check vlan
-    netq show ip routes 10.1.20.1 origin
     netq show macs leaf01
     netq show changes between 1s and 2m
     ip route | netq resolve | less -R
