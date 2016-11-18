@@ -11,7 +11,7 @@ To execute the playbook to setup netq, type:
     ansible-playbook -s configure.yml
 
 Once successfully run, you can type 'netq' to see the status of the various nodes. You can also type 'netq' by logging into any of the spine/leaf nodes.
-Typing 'netq <TAB>' will show you options to try out. Some useful examples to get you going:
+Hitting TAB after typing 'netq' will show you commands available along with help text. Some useful examples to get you going:
 
     netq check bgp
     netq check vlan
