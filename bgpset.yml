@@ -61,8 +61,6 @@
           !
           route-map LOCAL_ROUTES permit 10
             match interface lo
-          route-map LOCAL_ROUTES permit 20
-            match interface bridge.{{ default_vlan }}
           !
       validate: /tmp/chk-quagga.sh %s
     become: true

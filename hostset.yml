@@ -86,20 +86,17 @@
           auto eth1 
           iface eth1 inet manual
              bond-master bond0
+             mtu 9150
           #
           auto eth2
           iface eth2 inet manual
              bond-master bond0
+             mtu 9150
           #
           auto bond0
           iface bond0 inet static
+             mtu 9150
              bond-slaves eth1 eth2
-             bond-mode 802.3ad
-             bond-miimon 100
-             bond-use-carrier 1
-             bond-lacp-rate 1
-             bond-min-links 1
-             bond-xmit-hash-policy layer3+4
              address {{ host_ip_addr|trim }}
              post-up ifenslave bond0 eth1 eth2
              post-up ip link set bond0 promisc on

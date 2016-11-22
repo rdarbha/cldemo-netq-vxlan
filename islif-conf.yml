@@ -27,6 +27,7 @@
         auto {{ item }}
         iface {{ item }} inet static
           address {{ my_ip }}/32
+          mtu 9216
 
       validate: ifup -s -a -i %s
     become: true
@@ -45,6 +46,7 @@
         
         auto {{ item }}
         iface {{ item }}
+          mtu 9216
 
       validate: ifup -s -a -i %s
     become: true

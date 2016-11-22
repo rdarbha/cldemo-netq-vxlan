@@ -8,6 +8,7 @@
         auto {{ item }}
         iface {{ item }}
            bridge-access {{ default_vlan }}
+           mtu 9150
 
     with_items: "{{ ansible_interfaces }}"
     when: "{{ 'leaf' in group_names and item|match(leaf_to_server_ports) }}"
@@ -24,11 +25,7 @@
         auto bond-{{ item }}
         iface bond-{{ item }}
           bond-slaves {{ item }}
-          bond-mode 802.3ad
-          bond-miimon 100
-          bond-lacp-rate 1
-          bond-min-links 1
-          bond-xmit-hash-policy layer3+4
+          mtu 9150
           clag-id {{ item.split('p')[1] }}
           mstpctl-portadminedge yes
           mstpctl-bpduguard yes
@@ -102,6 +99,7 @@
 
         auto {{ item }}
         iface {{ item }}
+           mtu 9216
 
     become: true
     with_items: "{{ ansible_interfaces }}"
@@ -119,12 +117,8 @@
         auto peer-link
         iface peer-link
           bond-slaves regex {{ clag_peer_ports }}
-          bond-mode 802.3ad
-          bond-miimon 100
-          bond-lacp-rate 1
-          bond-min-links 1
-          bond-xmit-hash-policy layer3+4
           bridge-vids 20 4094
+          mtu 9216
           post-up ip link set peer-link promisc on
 
         # sub-interface for clagd communication
@@ -149,9 +143,12 @@
       block: |
         auto vni-{{ (default_vlan+10000)|int }}
         iface vni-{{ (default_vlan+10000)|int }}
+           mtu 9216
            vxlan-id {{ (default_vlan+10000)|int }}
            vxlan-local-tunnelip {{ my_ip }}
            bridge-access {{ default_vlan }}
+           mstpctl-bpduguard yes
+           mstpctl-portbpdufilter yes
     when: "{{ 'leaf' in group_names }}"
 
   - name: Create bridge and add ports to it
@@ -161,6 +158,7 @@
       block: |
         auto br-{{ default_vlan }}
         iface br-{{ default_vlan }}
+          mtu 9216
           bridge-vlan-aware yes
           bridge-vids {{ default_vlan }}
           bridge-ports glob bond-{{ leaf_to_server_ports }} peer-link vni-{{ (default_vlan+10000)|int }}
