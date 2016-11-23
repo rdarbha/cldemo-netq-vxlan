@@ -111,7 +111,8 @@
       - vxrd
 
   - name: Reload the interfaces file
-    command: sudo ifreload -a
+    command: ifreload -a
+    become: yes
     when: "{{ 'leaf' in group_names }}"
 
   - name: Delete the existing vxrd.conf file

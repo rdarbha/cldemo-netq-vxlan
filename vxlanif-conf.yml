@@ -105,16 +105,6 @@
           {% endif %}
     when: "{{ 'leaf' in group_names }}"
 
-  - name: Construct CLAG Backup IP for leaves
-    set_fact:
-        clag_peer_ip: |
-          {% if (my_node_id|int % 2) == 1 %}
-             {{ hostvars[inventory_hostname.split('e')[0] + 'e' + "%02d"|format(inventory_hostname.split('e')[1]|int + 1)]['ansible_eth0']['ipv4']['address'] }}
-          {% else %}
-             {{ hostvars[inventory_hostname.split('e')[0] + 'e' + "%02d"|format(inventory_hostname.split('e')[1]|int - 1)]['ansible_eth0']['ipv4']['address'] }}
-          {% endif %}
-    when: "{{ 'spine' in group_names }}"
-
   - name: Add CLAG peer ports
     blockinfile:
       dest: /etc/network/interfaces
