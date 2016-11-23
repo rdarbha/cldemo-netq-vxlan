@@ -91,6 +91,30 @@
       - compute
       - leaf
 
+  # Backup IP is the peer switch's eth0 address.
+  # Construct peer switch's name based on my name:
+  # If I'm leaf01, peer is leaf02; if I'm leaf02, peer is leaf01
+  # Same applies for spine and exit leaves
+  - name: Construct CLAG Backup IP for leaves
+    set_fact:
+        clag_peer_ip: |
+          {% if (my_node_id|int % 2) == 1 %}
+             {{ hostvars[inventory_hostname.split('f')[0] + 'f' + "%02d"|format(inventory_hostname.split('f')[1]|int + 1)]['ansible_eth0']['ipv4']['address'] }}
+          {% else %}
+             {{ hostvars[inventory_hostname.split('f')[0] + 'f' + "%02d"|format(inventory_hostname.split('f')[1]|int - 1)]['ansible_eth0']['ipv4']['address'] }}
+          {% endif %}
+    when: "{{ 'leaf' in group_names }}"
+
+  - name: Construct CLAG Backup IP for leaves
+    set_fact:
+        clag_peer_ip: |
+          {% if (my_node_id|int % 2) == 1 %}
+             {{ hostvars[inventory_hostname.split('e')[0] + 'e' + "%02d"|format(inventory_hostname.split('e')[1]|int + 1)]['ansible_eth0']['ipv4']['address'] }}
+          {% else %}
+             {{ hostvars[inventory_hostname.split('e')[0] + 'e' + "%02d"|format(inventory_hostname.split('e')[1]|int - 1)]['ansible_eth0']['ipv4']['address'] }}
+          {% endif %}
+    when: "{{ 'spine' in group_names }}"
+
   - name: Add CLAG peer ports
     blockinfile:
       dest: /etc/network/interfaces
@@ -129,6 +153,7 @@
           clagd-peer-ip {{ my_clag_peer_ip|trim }}
           clagd-sys-mac {{ my_clag_sys_mac|trim }}
           clagd-priority {{ my_clag_prio|trim }}
+          clagd-backup-ip {{ clag_peer_ip|trim }}
           clagd-args --vm
     become: true
     when: "{{ 'leaf' in group_names and dual_attach_hosts }}"
