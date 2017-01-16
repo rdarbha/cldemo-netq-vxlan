@@ -70,6 +70,7 @@ Hitting TAB after typing 'netq' will show you commands available along with help
         view     :  Show output of pre-defined commands on specific node```
 
 Some useful examples to get you going
+
     netq check bgp
     netq check vlan
     netq trace l3 10.1.20.1 from 10.3.20.3
